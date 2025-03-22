@@ -9,12 +9,12 @@ use relm4::{
     SimpleComponent,
 };
 use tokio::time::{self, Duration};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::sync::Notify;
 use tokio::select;
 
-use crate::model::LifeGame;
-use crate::model::Cell;
+use crate::model::{LifeGame, Cell, Pattern};
+use crate::component::CellMsg;
 
 pub struct ViewModel {
     life_game: LifeGame,
@@ -27,6 +27,7 @@ pub struct ViewModel {
 pub enum LifeGameMsg {
     StartStop,
     NextGeneration,
+    SelectPattern(Pattern),
 }
 
 #[relm4::component(pub)]
@@ -43,11 +44,35 @@ impl SimpleComponent for ViewModel {
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 5,
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Horizontal,
+                    set_spacing: 5,
+                    gtk::Button {
+                        set_label: "Blinker",
+                        connect_clicked => LifeGameMsg::SelectPattern(Pattern::Blinker),
+                    },
+                    gtk::Button {
+                        set_label: "Toad",
+                        connect_clicked => LifeGameMsg::SelectPattern(Pattern::Toad),
+                    },
+                    gtk::Button {
+                        set_label: "Glider",
+                        connect_clicked => LifeGameMsg::SelectPattern(Pattern::Glider),
+                    },
+                    gtk::Button {
+                        set_label: "Beacon",
+                        connect_clicked => LifeGameMsg::SelectPattern(Pattern::Beacon),
+                    },
+                },
                 #[name(start_stop_button)]
                 gtk::Button {
                     #[watch]
                     set_label: if model.timer { "Stop" } else { "Start" },
                     connect_clicked => LifeGameMsg::StartStop,
+                },
+                gtk::Label {
+                    #[watch]
+                    set_label: &format!("Generation: {}", model.life_game.get_generation()),
                 },
                 #[local_ref]
                 game_grid -> gtk::Grid {
@@ -118,6 +143,30 @@ impl SimpleComponent for ViewModel {
             }
             LifeGameMsg::NextGeneration => {
                 self.life_game.next_generation();
+                self.update_all_cells();
+            }
+            LifeGameMsg::SelectPattern(pattern) => {
+                if self.timer {
+                    self.timer = false;
+                    if let Some(handle) = self.timer_handle.take() {
+                        handle.notify_one();
+                    }
+                }
+                self.life_game.set_initialize_pattern(pattern);
+                self.update_all_cells();
+            }
+        }
+    }
+}
+
+impl ViewModel {
+    fn update_all_cells(&mut self) {
+        for y in 0..self.life_game.get_height() {
+            for x in 0..self.life_game.get_width() {
+                let cell = self.life_game.get_cell(x as i32, y as i32).unwrap();
+                let index = self.life_game.get_index(x as i32, y as i32);
+                //self.cell_widgets.guard().get_mut(index).unwrap().set_alive(cell.is_alive());
+                self.cell_widgets.guard().send(index, CellMsg::NextGeneration(cell.is_alive()));
             }
         }
     }

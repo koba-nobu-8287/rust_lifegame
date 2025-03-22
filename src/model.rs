@@ -29,6 +29,19 @@ impl Cell {
     }
 }
 
+static BLINKER: [(i32, i32); 3] = [(1, 1), (2, 1), (3, 1)];
+static TOAD: [(i32, i32); 6] = [(2, 1), (3, 1), (4, 1), (1, 2), (2, 2), (3, 2)];
+static GLIDER: [(i32, i32); 5] = [(2, 1), (3, 2), (1, 3), (2, 3), (3, 3)];
+static BEACON: [(i32, i32); 8] = [(2, 1), (3, 1), (2, 2), (3, 2), (4, 3), (5, 3), (4, 4), (5, 4)];
+
+#[derive(Debug)]
+pub enum Pattern {
+    Blinker,
+    Toad,
+    Glider,
+    Beacon,
+}
+
 /// LifeGame model
 #[derive(Debug)]
 pub struct LifeGame {
@@ -59,7 +72,7 @@ impl LifeGame {
         self.width
     }
     /// Get the height of the life-game.
-    pub fn get_heght(&self) -> usize {
+    pub fn get_height(&self) -> usize {
         self.height
     }
     /// Get the generation of the life-game.
@@ -72,7 +85,7 @@ impl LifeGame {
         (pos + delta).rem_euclid(max)
     }
     /// Calculatet the vector index from the position.
-    fn get_index(&self, x: i32, y: i32) -> usize {
+    pub fn get_index(&self, x: i32, y: i32) -> usize {
         let x = LifeGame::add_position(x, 0, self.width as i32);
         let y = LifeGame::add_position(y, 0, self.height as i32);
         (y * self.width as i32 + x) as usize
@@ -122,5 +135,49 @@ impl LifeGame {
             }
         }
         count
+    }
+
+    /// Reset the game.
+    pub fn reset(&mut self) {
+        for cell in &mut self.cells {
+            cell.set_alive(false);
+        }
+        self.generation = 0;
+    }
+
+    /// Set the initial pattern.
+    pub fn set_initialize_pattern(&mut self, pattern: Pattern) {
+        self.reset();
+        match pattern {
+            Pattern::Blinker => {
+                for (x, y) in BLINKER.iter() {
+                    if let Some(cell) = self.get_cell_mut(*x, *y) {
+                        cell.set_alive(true);
+                    }
+                }
+            }
+            Pattern::Toad => {
+                for (x, y) in TOAD.iter() {
+                    if let Some(cell) = self.get_cell_mut(*x, *y) {
+                        cell.set_alive(true);
+                    }
+                }
+            }
+            Pattern::Glider => {
+                for (x, y) in GLIDER.iter() {
+                    if let Some(cell) = self.get_cell_mut(*x, *y) {
+                        cell.set_alive(true);
+                    }
+                }
+            }
+            Pattern::Beacon => {
+                for (x, y) in BEACON.iter() {
+                    if let Some(cell) = self.get_cell_mut(*x, *y) {
+                        cell.set_alive(true);
+                    }
+                }
+            }
+        }
+        self.generation = 0;
     }
 }
