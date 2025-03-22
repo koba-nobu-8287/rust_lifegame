@@ -1,0 +1,12 @@
+[package]
+name = "relm4_template"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gtk = { version = "0.9.6", package = "gtk4", features = ["v4_16"] }
+
+relm4 = "0.9.1"
+relm4-components = "0.9.1"
+
+tokio = { version = "1.44.1", features = ["full"]}
