@@ -13,12 +13,12 @@ use std::sync::Arc;
 use tokio::sync::Notify;
 use tokio::select;
 
-use crate::model::{LifeGame, Cell, Pattern};
-use crate::component::CellMsg;
+use crate::model::{LifeGame, Pattern};
+use crate::component::{CellModel, CellMsg};
 
 pub struct ViewModel {
     life_game: LifeGame,
-    cell_widgets: FactoryVecDeque<Cell>,
+    cell_widgets: FactoryVecDeque<CellModel>,
     timer: bool,
     timer_handle: Option<Arc<Notify>>,
 }
@@ -88,7 +88,7 @@ impl SimpleComponent for ViewModel {
         root: Self::Root,
         _sender: ComponentSender<ViewModel>,
     ) -> ComponentParts<Self> {
-        let cells = FactoryVecDeque::<Cell>::builder()
+        let cells = FactoryVecDeque::<CellModel>::builder()
             .launch(gtk::Grid::default())
             .detach();
         let mut model = ViewModel {
