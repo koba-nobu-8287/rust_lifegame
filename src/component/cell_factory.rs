@@ -22,6 +22,11 @@ use crate::model::Cell;
 pub struct CellModel {
     drawing_area: Option<DrawingArea>,
     cell_rc: Rc<RefCell<Cell>>,
+    is_mouse_pressed: bool,
+    press_x: f64,
+    press_y: f64,
+    widget_width: f64,
+    widget_height: f64,
 }
 
 impl Position<GridPosition, DynamicIndex> for CellModel {
@@ -41,6 +46,11 @@ impl Position<GridPosition, DynamicIndex> for CellModel {
 #[derive(Debug)]
 pub enum CellMsg {
     NextGeneration(bool),
+    MousePressed { x: f64, y: f64 },
+    MouseReleased { x: f64, y: f64 },
+    MouseMoved { x: f64, y: f64 },
+    ClickDetected { start_x: f64, start_y: f64, end_x: f64, end_y: f64 },
+    ClickCanceled { start_x: f64, start_y: f64, end_x: f64, end_y: f64 },
 }
 
 fn draw_cell(is_alive: bool, _area: &DrawingArea, cr: &Context, width: i32, height: i32) {
@@ -89,6 +99,11 @@ impl FactoryComponent for CellModel {
         CellModel {
             drawing_area: None,
             cell_rc: Rc::new(RefCell::new(Cell::new(x, y, alive))),
+            is_mouse_pressed: false,
+            press_x: 0.0,
+            press_y: 0.0,
+            widget_width: 0.0,
+            widget_height: 0.0,
         }
     }
 
@@ -98,14 +113,17 @@ impl FactoryComponent for CellModel {
         _index: &Self::Index,
         root: Self::Root,
         _returned_widget: &<Self::ParentWidget as FactoryView>::ReturnedWidget,
-        _sender: FactorySender<Self>) -> Self::Widgets {
+        sender: FactorySender<Self>) -> Self::Widgets {
         let widgets = view_output!();
         self.drawing_area = Some(widgets.drawing_area.clone());
+        if let Some(drawing_area) = &self.drawing_area {
+            self.setup_mouse_events(drawing_area, &sender);
+        }
         widgets
     }
 
     /// Update the cell model with the given message.
-    fn update(&mut self, msg: Self::Input, _sender: FactorySender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: FactorySender<Self>) {
         match msg {
             CellMsg::NextGeneration(alive) => {
                 let cell_ref = self.cell_rc.clone();
@@ -116,7 +134,78 @@ impl FactoryComponent for CellModel {
                     // println!("Drawing cell at ({}, {}) with state: {}", x, y, alive);
                     drawing_area.queue_draw();
                 }
-            }
+            },
+            CellMsg::MousePressed { x, y } => {
+                self.is_mouse_pressed = true;
+                self.press_x = x;
+                self.press_y = y;
+                #[cfg(debug_assertions)]
+                println!("Mouse pressed at ({}, {})", x, y);
+            },
+            CellMsg::MouseReleased { x, y } => {
+                if self.is_mouse_pressed {
+                    self.is_mouse_pressed = false;
+                    if x >= 0.0 && x <= self.widget_width && y >= 0.0 && y <= self.widget_height {
+                        sender.input(CellMsg::ClickDetected {
+                            start_x: self.press_x,
+                            start_y: self.press_y,
+                            end_x: x,
+                            end_y: y,
+                        });
+                    } else {
+                        sender.input(CellMsg::ClickCanceled {
+                            start_x: self.press_x,
+                            start_y: self.press_y,
+                            end_x: x,
+                            end_y: y, });
+                    }
+                }
+                #[cfg(debug_assertions)]
+                println!("Mouse released at ({}, {})", x, y);
+            },
+            CellMsg::MouseMoved { x, y } => {
+                if x >= 0.0 && y >= 0.0 {
+                    self.widget_width = self.drawing_area.as_ref().unwrap().width() as f64;
+                    self.widget_height = self.drawing_area.as_ref().unwrap().height() as f64;
+                }
+            },
+            CellMsg::ClickDetected { start_x, start_y, end_x, end_y } => {
+                #[cfg(debug_assertions)]
+                println!("Click detected from ({}, {}) to ({}, {})", start_x, start_y, end_x, end_y);
+            },
+            CellMsg::ClickCanceled { start_x, start_y, end_x, end_y } => {
+                #[cfg(debug_assertions)]
+                println!("Click canceled from ({}, {}) to ({}, {})", start_x, start_y, end_x, end_y);
+            },
         }
+    }
+}
+
+impl CellModel {
+    fn setup_mouse_events(&self, drawing_area: &DrawingArea, sender: &FactorySender<Self>) {
+        let sender_clone = sender.clone();
+        // Create EventController for button press and release
+        let click_controller = gtk::GestureClick::new();
+        click_controller.connect_pressed(move |_gesture, _n_press, x, y| {
+            sender_clone.input(CellMsg::MousePressed { x, y });
+        });
+
+        let sender_clone = sender.clone();
+        click_controller.connect_released(move |_gesture, _npress,x, y| {
+            sender_clone.input(CellMsg::MouseReleased { x, y });
+        });
+
+        // Add the click controller to the DrawingArea
+        drawing_area.add_controller(click_controller);
+
+        // Create EventController for motion notify
+        let sender_clone = sender.clone();
+        let motion_controller = gtk::EventControllerMotion::new();
+        motion_controller.connect_motion(move |_controller, x, y| {
+            sender_clone.input(CellMsg::MouseMoved { x, y });
+        });
+
+        // Add the motion controller to the DrawingArea
+        drawing_area.add_controller(motion_controller);
     }
 }
