@@ -186,6 +186,8 @@ impl CellModel {
         let sender_clone = sender.clone();
         // Create EventController for button press and release
         let click_controller = gtk::GestureClick::new();
+        // GestureClick is implments GestureSingle, so if we need to handle secondery button,
+        // we can use set_button() method.
         click_controller.connect_pressed(move |_gesture, _n_press, x, y| {
             sender_clone.input(CellMsg::MousePressed { x, y });
         });
