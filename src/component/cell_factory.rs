@@ -183,6 +183,7 @@ impl FactoryComponent for CellModel {
                     if let Some(drawing_area) = &self.drawing_area {
                         drawing_area.queue_draw();
                     }
+                    //FIXME: Notify the cell status change to the parent component.
                 }
             },
             CellMsg::ClickCanceled { start_x, start_y, end_x, end_y } => {
