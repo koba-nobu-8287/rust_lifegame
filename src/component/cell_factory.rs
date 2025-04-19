@@ -27,6 +27,7 @@ pub struct CellModel {
     press_y: f64,
     widget_width: f64,
     widget_height: f64,
+    is_event_accept: bool,
 }
 
 impl Position<GridPosition, DynamicIndex> for CellModel {
@@ -51,6 +52,7 @@ pub enum CellMsg {
     MouseMoved { x: f64, y: f64 },
     ClickDetected { start_x: f64, start_y: f64, end_x: f64, end_y: f64 },
     ClickCanceled { start_x: f64, start_y: f64, end_x: f64, end_y: f64 },
+    AcceptClick(bool),
 }
 
 fn draw_cell(is_alive: bool, _area: &DrawingArea, cr: &Context, width: i32, height: i32) {
@@ -104,6 +106,7 @@ impl FactoryComponent for CellModel {
             press_y: 0.0,
             widget_width: 0.0,
             widget_height: 0.0,
+            is_event_accept: true,
         }
     }
 
@@ -172,11 +175,23 @@ impl FactoryComponent for CellModel {
             CellMsg::ClickDetected { start_x, start_y, end_x, end_y } => {
                 #[cfg(debug_assertions)]
                 println!("Click detected from ({}, {}) to ({}, {})", start_x, start_y, end_x, end_y);
+                if self.is_event_accept {
+                    let cell_ref = self.cell_rc.clone();
+                    let alive = cell_ref.borrow().is_alive();
+                    let mut cell = cell_ref.borrow_mut();
+                    cell.set_alive(!alive);
+                    if let Some(drawing_area) = &self.drawing_area {
+                        drawing_area.queue_draw();
+                    }
+                }
             },
             CellMsg::ClickCanceled { start_x, start_y, end_x, end_y } => {
                 #[cfg(debug_assertions)]
                 println!("Click canceled from ({}, {}) to ({}, {})", start_x, start_y, end_x, end_y);
             },
+            CellMsg::AcceptClick(accept) => {
+                self.is_event_accept = accept;
+            }
         }
     }
 }

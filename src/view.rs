@@ -140,6 +140,7 @@ impl SimpleComponent for ViewModel {
                         handle.notify_one();
                     }
                 }
+                self.accept_event(!self.timer);
             }
             LifeGameMsg::NextGeneration => {
                 self.life_game.next_generation();
@@ -167,6 +168,14 @@ impl ViewModel {
                 let index = self.life_game.get_index(x as i32, y as i32);
                 //self.cell_widgets.guard().get_mut(index).unwrap().set_alive(cell.is_alive());
                 self.cell_widgets.guard().send(index, CellMsg::NextGeneration(cell.is_alive()));
+            }
+        }
+    }
+    fn accept_event(&mut self, accept: bool) {
+        for y in 0..self.life_game.get_height() {
+            for x in 0..self.life_game.get_width() {
+                let index = self.life_game.get_index(x as i32, y as i32);
+                self.cell_widgets.guard().send(index, CellMsg::AcceptClick(accept));
             }
         }
     }
