@@ -55,6 +55,11 @@ pub enum CellMsg {
     AcceptClick(bool),
 }
 
+#[derive(Debug)]
+pub enum CellOutputMsg {
+    StateChanged { column: i32, row: i32, alive: bool },
+}
+
 fn draw_cell(is_alive: bool, _area: &DrawingArea, cr: &Context, width: i32, height: i32) {
     // println!("alive: {}", is_alive);
     if is_alive {
@@ -70,7 +75,7 @@ fn draw_cell(is_alive: bool, _area: &DrawingArea, cr: &Context, width: i32, heig
 impl FactoryComponent for CellModel {
     type Init = (i32, i32, bool);
     type Input = CellMsg;
-    type Output = ();
+    type Output = CellOutputMsg;
     type CommandOutput = ();
     type ParentWidget = gtk::Grid;
 
@@ -177,13 +182,18 @@ impl FactoryComponent for CellModel {
                 println!("Click detected from ({}, {}) to ({}, {})", start_x, start_y, end_x, end_y);
                 if self.is_event_accept {
                     let cell_ref = self.cell_rc.clone();
-                    let alive = cell_ref.borrow().is_alive();
                     let mut cell = cell_ref.borrow_mut();
+                    let alive = cell.is_alive();
+                    let (x, y) = cell.get_position();
                     cell.set_alive(!alive);
                     if let Some(drawing_area) = &self.drawing_area {
                         drawing_area.queue_draw();
                     }
-                    //FIXME: Notify the cell status change to the parent component.
+                    _ = sender.output(CellOutputMsg::StateChanged {
+                        column: x,
+                        row: y,
+                        alive: !alive,
+                    });
                 }
             },
             CellMsg::ClickCanceled { start_x, start_y, end_x, end_y } => {

@@ -14,7 +14,7 @@ use tokio::sync::Notify;
 use tokio::select;
 
 use crate::model::{LifeGame, Pattern};
-use crate::component::{CellModel, CellMsg};
+use crate::component::{CellModel, CellMsg, CellOutputMsg};
 
 pub struct ViewModel {
     life_game: LifeGame,
@@ -28,6 +28,7 @@ pub enum LifeGameMsg {
     StartStop,
     NextGeneration,
     SelectPattern(Pattern),
+    StateChanged { column: i32, row: i32, alive: bool },
 }
 
 #[relm4::component(pub)]
@@ -86,11 +87,14 @@ impl SimpleComponent for ViewModel {
     fn init(
         (width, height): Self::Init,
         root: Self::Root,
-        _sender: ComponentSender<ViewModel>,
+        sender: ComponentSender<ViewModel>,
     ) -> ComponentParts<Self> {
         let cells = FactoryVecDeque::<CellModel>::builder()
             .launch(gtk::Grid::default())
-            .detach();
+            .forward(sender.input_sender(),
+                |output| match output {
+                CellOutputMsg::StateChanged { column, row, alive } => LifeGameMsg::StateChanged { column, row, alive },
+            });
         let mut model = ViewModel {
             life_game: LifeGame::new(width, height),
             cell_widgets: cells,
@@ -155,6 +159,10 @@ impl SimpleComponent for ViewModel {
                 }
                 self.life_game.set_initialize_pattern(pattern);
                 self.update_all_cells();
+            }
+            LifeGameMsg::StateChanged { column, row, alive } => {
+                let cell = self.life_game.get_cell_mut(column, row).unwrap();
+                cell.set_alive(alive);
             }
         }
     }
