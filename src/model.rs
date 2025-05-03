@@ -49,6 +49,7 @@ pub struct LifeGame {
     height: usize,
     cells: Vec<Cell>,
     generation: i32,
+    keep_alive: bool,
 }
 
 impl LifeGame {
@@ -65,6 +66,7 @@ impl LifeGame {
             height,
             cells,
             generation: 0,
+            keep_alive: false,
         }
     }
     /// Get the width of the life-game.
@@ -102,6 +104,7 @@ impl LifeGame {
     /// Update the state of the game to the next generation.
     pub fn next_generation(&mut self) {
         let mut new_cells = self.cells.clone();
+        self.keep_alive = false;
         for cell in &self.cells {
             let (x, y) = cell.get_position();
             let alive_neighbors = self.count_alive_neighbors(x, y);
@@ -111,6 +114,9 @@ impl LifeGame {
                 (false, 3) => true,
                 (false, _) => false,
             };
+            if new_state {
+                self.keep_alive = true;
+            }
             let index = self.get_index(x, y);
             if let Some(new_cell) = new_cells.get_mut(index) {
                 new_cell.set_alive(new_state);
