@@ -178,6 +178,14 @@ impl ViewModel {
                 self.cell_widgets.guard().send(index, CellMsg::NextGeneration(cell.is_alive()));
             }
         }
+        if !self.life_game.keep_alive() {
+            self.timer = false;
+            if let Some(handle) = self.timer_handle.take() {
+                handle.notify_one();
+            }
+            self.accept_event(!self.timer);
+            self.life_game.reset_generation();
+        }
     }
     fn accept_event(&mut self, accept: bool) {
         for y in 0..self.life_game.get_height() {

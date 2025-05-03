@@ -126,6 +126,14 @@ impl LifeGame {
         self.generation += 1;
     }
 
+    pub fn keep_alive(&self) -> bool {
+        self.keep_alive
+    }
+
+    pub fn reset_generation(&mut self) {
+        self.generation = 0;
+    }
+
     /// Count the number of alive neighbors of a cell at a given position.
     fn count_alive_neighbors(&self, x: i32, y: i32) -> usize {
         let mut count = 0;
